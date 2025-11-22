@@ -3,25 +3,48 @@
 library(haven)
 library(tidyverse)
 library(ggplot2)
+library(ggrepel)
 
-total_consumption <- read_csv('net-receipts-by-commodity.csv')
+e_cig_data <- read_csv('ECigarette.csv')
+e_cig_data_all <- e_cig_data |>
+  filter(Sex == "Both sexes")
 
-total_excise <- read_csv('excise-volumes-commodity.csv')
+smoking_data <- read_csv('Smoking.csv') 
+smoking_data_all <- smoking_data |>
+  filter(Sex == "Both sexes")
 
-summary(total_consumption)
+smoking_v_ecig <- inner_join(smoking_data_all, e_cig_data_all, by = c("Year", "Age Group", "Sex"))
 
-total_cons_tob <- subset (total_consumption, commodity_and_head_of_duty == "Tobacco Cigarettes")
-total_cons_tob$net_receipts_ <- as.numeric(total_cons_tob$net_receipts_)
-total_cons_tob <- total_cons_tob |>
-  mutate (net_receipts_mills = net_receipts_/10^6)
+ggplot(smoking_v_ecig, aes(x = Year))+
+  geom_smooth(se=FALSE, aes(y= VALUE.x, colour = "Tobacco Cigarette"), size = 0.5) +
+  geom_smooth(se=FALSE, aes(y= VALUE.y, colour = "e-Cigarette"), size = 0.5) +
+  facet_wrap(~ `Age Group`)+
+  theme_minimal()+
+  scale_x_continuous(breaks = scales::pretty_breaks())+
+  scale_colour_manual(values = c("#004488", "#BB5566"))+
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    axis.text.y = element_text(size = 8),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.text = element_text(size = 8),
+    legend.title = element_blank(),
+    legend.key.size = unit(0.8, "lines"),
+    legend.position = "bottom",
+    legend.justification = "center",
+    strip.text = element_text(size = 9, face = "bold"),
+    plot.title = element_text(size = 10, face = "bold"),
+    plot.subtitle = element_text(size = 8),
+    axis.title.y = element_text(size = 9, face = "bold"),
+    axis.title.x = element_text(size = 9, face = "bold")
+  ) +
+  labs(
+    x = "Year",
+    y = "% of People Using each Tobacco Product",
+    colour = "Tobacco Product",
+    title = "Tobacco Use in Ireland since 2015",
+    subtitle = "By Age Group and Product Type"
+  )
 
-theme_set(theme_classic())
-important_dates <- (c(2008, 2012, 2020)) # need to sub for actual important tax dates
 
-ggplot(total_cons_tob, aes(x=year, y=net_receipts_mills, label = year)) +
-  geom_point() +
-  geom_smooth(color = "grey")+
-  geom_vline(xintercept = important_dates, 
-             color = "blue", linetype = "dashed", size = 1) +
-  geom_text() +
-  labs(title = "Cigarette Consumption in Ireland",x = "Year", y = "Total Consumption (in m)") 
+ggsave("Tobacco Cigs vs e-Cigs Plot.png")
